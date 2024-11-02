@@ -18,7 +18,7 @@ var register = make(chan *websocket.Conn)
 var broadcast = make(chan string)
 var unregister = make(chan *websocket.Conn)
 
-func handler() {
+func handleMessages() {
 	for {
 		select {
 		case connection := <-register:
@@ -48,7 +48,7 @@ func main() {
 		return context.SendStatus(fiber.StatusUpgradeRequired)
 	})
 
-	go handler()
+	go handleMessages()
 
 	app.Get("/ws", websocket.New(func(connection *websocket.Conn) {
 		defer func() {
