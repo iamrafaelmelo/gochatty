@@ -1,16 +1,27 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
 	"log"
 	"sync"
 
 	"github.com/gofiber/contrib/websocket"
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 )
 
 type Client struct {
+	pid       string
 	isClosing bool
 	mutex     sync.Mutex
+}
+
+type Message struct {
+	Pid      string
+	Type     string
+	Content  string
+	DateTime string
 }
 
 var clients = make(map[*websocket.Conn]*Client)
@@ -53,10 +64,12 @@ func main() {
 				return
 			}
 
-			if messageType == websocket.TextMessage {
-				log.Println("[info] received message: ", string(message))
-				broadcast <- string(message)
+			if messageType != websocket.TextMessage {
+				return
 			}
+
+			log.Println("[info] received message: ", string(message))
+			broadcast <- string(message)
 		}
 	}))
 
@@ -82,7 +95,14 @@ func handleMessages() {
 }
 
 func registerConnection(connection *websocket.Conn) {
-	clients[connection] = &Client{}
+	pid := uuid.NewString()
+
+	clients[connection] = &Client{
+		pid: pid,
+	}
+
+	payload := fmt.Sprintf("{\"type\":\"setup\",\"pid\":\"%s\"}", pid)
+	connection.WriteMessage(websocket.TextMessage, []byte(payload))
 }
 
 func broadcastMessage(message string) {
@@ -92,6 +112,16 @@ func broadcastMessage(message string) {
 			defer client.mutex.Unlock()
 
 			if client.isClosing {
+				return
+			}
+
+			MessageStruct := &Message{}
+
+			if error := json.Unmarshal([]byte(message), &MessageStruct); error != nil {
+				log.Println("[error] json error: ", error)
+			}
+
+			if MessageStruct.Pid == client.pid {
 				return
 			}
 
