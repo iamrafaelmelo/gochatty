@@ -22,32 +22,13 @@ func handler() {
 	for {
 		select {
 		case connection := <-register:
-			clients[connection] = &Client{}
+			registerConnection(connection)
 			log.Println("[info] connection registered")
 		case message := <-broadcast:
-			log.Println(message)
-
-			for connection, client := range clients {
-				go func(connection *websocket.Conn, client *Client) {
-					client.mutex.Lock()
-					defer client.mutex.Unlock()
-
-					if client.isClosing {
-						return
-					}
-
-					if error := connection.WriteMessage(websocket.TextMessage, []byte(message)); error != nil {
-						log.Println("[error] write error: ", error)
-
-						client.isClosing = true
-						connection.WriteMessage(websocket.CloseMessage, []byte{})
-						connection.Close()
-						unregister <- connection
-					}
-				}(connection, client)
-			}
+			log.Println("[info] received message: ", message)
+			broadcastMessage(message)
 		case connection := <-unregister:
-			delete(clients, connection)
+			removeConnection(connection)
 			log.Println("[info] connection unregistered")
 		}
 	}
@@ -91,8 +72,6 @@ func main() {
 			if messageType == websocket.TextMessage {
 				log.Println("[info] received message: ", string(message))
 				broadcast <- string(message)
-			} else {
-				log.Println("websocket message received of type", messageType)
 			}
 		}
 	}))
@@ -100,4 +79,34 @@ func main() {
 	if error := app.Listen(":8080"); error != nil {
 		log.Fatal(error)
 	}
+}
+
+func registerConnection(connection *websocket.Conn) {
+	clients[connection] = &Client{}
+}
+
+func broadcastMessage(message string) {
+	for connection, client := range clients {
+		go func(connection *websocket.Conn, client *Client) {
+			client.mutex.Lock()
+			defer client.mutex.Unlock()
+
+			if client.isClosing {
+				return
+			}
+
+			if error := connection.WriteMessage(websocket.TextMessage, []byte(message)); error != nil {
+				log.Println("[error] write error: ", error)
+
+				client.isClosing = true
+				connection.WriteMessage(websocket.CloseMessage, []byte{})
+				connection.Close()
+				unregister <- connection
+			}
+		}(connection, client)
+	}
+}
+
+func removeConnection(connection *websocket.Conn) {
+	delete(clients, connection)
 }
