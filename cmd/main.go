@@ -18,22 +18,6 @@ var register = make(chan *websocket.Conn)
 var broadcast = make(chan string)
 var unregister = make(chan *websocket.Conn)
 
-func handleMessages() {
-	for {
-		select {
-		case connection := <-register:
-			registerConnection(connection)
-			log.Println("[info] connection registered")
-		case message := <-broadcast:
-			log.Println("[info] received message: ", message)
-			broadcastMessage(message)
-		case connection := <-unregister:
-			removeConnection(connection)
-			log.Println("[info] connection unregistered")
-		}
-	}
-}
-
 func main() {
 	app := fiber.New()
 	app.Static("/", "./web/public", fiber.Static{
@@ -78,6 +62,22 @@ func main() {
 
 	if error := app.Listen(":8080"); error != nil {
 		log.Fatal(error)
+	}
+}
+
+func handleMessages() {
+	for {
+		select {
+		case connection := <-register:
+			registerConnection(connection)
+			log.Println("[info] connection registered")
+		case message := <-broadcast:
+			log.Println("[info] received message: ", message)
+			broadcastMessage(message)
+		case connection := <-unregister:
+			removeConnection(connection)
+			log.Println("[info] connection unregistered")
+		}
 	}
 }
 
