@@ -93,7 +93,7 @@ func handleMessages() {
 			registerConnection(connection)
 			log.Println("[info] connection registered")
 		case message := <-broadcast:
-			// log.Println("[info] received message: ", message)
+			log.Println("[info] received message: ", message)
 			broadcastMessage(message)
 		case connection := <-unregister:
 			removeConnection(connection)
