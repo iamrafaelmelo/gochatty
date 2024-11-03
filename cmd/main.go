@@ -77,7 +77,6 @@ func main() {
 				return
 			}
 
-			log.Println("[info] received message: ", string(message))
 			broadcast <- string(message)
 		}
 	}))
@@ -94,7 +93,7 @@ func handleMessages() {
 			registerConnection(connection)
 			log.Println("[info] connection registered")
 		case message := <-broadcast:
-			log.Println("[info] received message: ", message)
+			// log.Println("[info] received message: ", message)
 			broadcastMessage(message)
 		case connection := <-unregister:
 			removeConnection(connection)
@@ -145,6 +144,10 @@ func broadcastMessage(content string) {
 
 			if message.Pid == client.pid {
 				return
+			}
+
+			if message.Type == "typing" && message.Pid != client.pid {
+				message.Content = fmt.Sprintf("%s is typing...", message.Username)
 			}
 
 			payload, error := json.Marshal(message)

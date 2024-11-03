@@ -16,11 +16,12 @@
             </small>
         </header>
         <main class="mx-auto flex w-full p-6 max-w-4xl flex-1 flex-col rounded-xl border border-secondary-800 overflow-y-auto overflow-x-hidden relative" id="app">
-            <div class="h-full max-h-96 space-y-1 flex flex-col" id="list"></div>
+            <div class="h-full max-h-96 space-y-1 flex flex-col" id="messages-list"></div>
         </main>
         <footer class="space-y-3 text-center">
-            <form class="mx-auto w-full max-w-2xl flex" id="form">
-                <input class="w-full rounded-lg text-sm placeholder-secondary-600/85 border-secondary-800 bg-secondary-900 shadow-md focus:border-primary-600 focus:outline-none focus:ring-4 focus:ring-primary-500/15" type="text" id="message" placeholder="Type message here... (Press 'Enter' to send a message)" />
+            <form class="mx-auto w-full max-w-2xl flex flex-col gap-y-2" id="form-message">
+                <input class="w-full rounded-lg text-sm placeholder-secondary-600/85 border-secondary-800 bg-secondary-900 shadow-md focus:border-primary-600 focus:outline-none focus:ring-4 focus:ring-primary-500/15" type="text" id="message-input" placeholder="Type message here... (Press 'Enter' to send a message)" />
+                <p class="text-xs text-secondary-500 mt-auto" id="typing"></p>
             </form>
             <div class="flex items-center gap-x-2 text-xs text-secondary-600 justify-center">
                 <span>
