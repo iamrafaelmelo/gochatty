@@ -1,12 +1,21 @@
-const form = document.getElementById('form');
-const message = document.getElementById('message');
-const list = document.getElementById('list');
-const main = document.getElementById('app');
-
+const formMessage = document.getElementById('form-message');
+const messageInput = document.getElementById('message-input');
+const messagesList = document.getElementById('messages-list');
+const app = document.getElementById('app');
+const typingMessage = document.getElementById('typing');
 const websocket = new WebSocket(`ws://${document.location.host}/ws`);
+
+// Controls user typing intervals
+const throttleIntervalTime = 200;
+const clearIntervalTime = 900;
+var canSendMessage = false;
+var clearTimerId = null;
+
+// User base informations
 var pid = null;
 var username = null;
 
+// When receive an message from server
 websocket.onmessage = function (event) {
     const data = JSON.parse(event.data);
 
@@ -16,36 +25,60 @@ websocket.onmessage = function (event) {
             username = data.username
             break;
         case 'message':
-            append(data);
+            appendMessage(data);
             break;
-        case 'typying':
-            console.log('typing...');
+        case 'typing':
+            typingMessage.textContent = data.content;
+            clearTimeout(clearTimerId);
+            clearTimerId = setTimeout(() => { typingMessage.textContent = '' }, clearIntervalTime);
             break;
     }
 };
 
+// When close websocker connection (user close browser or unexpected error occurred)
 websocket.onclose = function (event) {
-    console.log('Connection closed!');
+    // ...
 };
 
-form.onsubmit = (event) => {
+// When user is typing a message
+messageInput.onkeyup = (event) => {
+    if (!canSendMessage) {
+        setTimeout(function () {
+            canSendMessage = true;
+        }, throttleIntervalTime);
+
+        return;
+    }
+
+    const data = JSON.stringify({
+        pid: pid,
+        type: 'typing',
+        username: username,
+        content: messageInput.value ?? '',
+        datetime: new Date().toLocaleTimeString()
+    });
+
+    websocket.send(data);
+};
+
+// When user send a message to server
+formMessage.onsubmit = (event) => {
     event.preventDefault();
     const data = JSON.stringify({
         pid: pid,
         type: 'message',
         username: username,
-        content: message.value,
+        content: messageInput.value,
         datetime: new Date().toLocaleTimeString(),
     });
 
-    console.log(`Sending to server: ${data}`);
     websocket.send(data);
-    append(JSON.parse(data));
-    message.value = '';
+    appendMessage(JSON.parse(data));
+    messageInput.value = '';
 };
 
-const append = (data) => {
-    list.insertAdjacentHTML('beforeend', `
+const appendMessage = (data) => {
+    messagesList.insertAdjacentHTML('beforeend', `
         <div class="flex gap-y-0.5 flex-col w-full pb-6 ${data.pid === pid ? 'items-end' : 'items-start'}">
             <p class="text-[0.65rem] text-secondary-500">${data.username} &bullet; ${data.datetime}</p>
             <p class="text-sm font-medium ${data.pid === pid ? 'bg-primary-600/35' : 'bg-secondary-600/35'} rounded-md px-3 py-2 gap-y-2 max-w-96">
@@ -54,5 +87,5 @@ const append = (data) => {
         </div>
     `);
 
-    main.scrollTo(0, list.scrollHeight);
+    app.scrollTo(0, messagesList.scrollHeight);
 };
