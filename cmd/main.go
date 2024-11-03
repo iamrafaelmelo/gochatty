@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 	"sync"
 
 	"github.com/gofiber/contrib/websocket"
@@ -13,6 +14,7 @@ import (
 
 type Client struct {
 	pid       string
+	username  string
 	isClosing bool
 	mutex     sync.Mutex
 }
@@ -96,12 +98,14 @@ func handleMessages() {
 
 func registerConnection(connection *websocket.Conn) {
 	pid := uuid.NewString()
+	username := fmt.Sprintf("Anonymous%d", rand.Int())
 
 	clients[connection] = &Client{
-		pid: pid,
+		pid:      pid,
+		username: username,
 	}
 
-	payload := fmt.Sprintf("{\"type\":\"setup\",\"pid\":\"%s\"}", pid)
+	payload := fmt.Sprintf("{\"type\":\"setup\",\"pid\":\"%s\",\"username\":\"%s\"}", pid, username)
 	connection.WriteMessage(websocket.TextMessage, []byte(payload))
 }
 

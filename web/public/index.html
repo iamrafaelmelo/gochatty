@@ -8,18 +8,24 @@
     </head>
     <body class="flex min-h-screen w-full flex-col gap-y-10 bg-secondary-950 p-8 text-white">
         <header class="flex flex-col gap-y-1 text-center">
-            <h1 class="text-xl font-bold">Go chatty</h1>
-            <small class="text-secondary-500">A simple Golang websocket's chat</small>
+            <h1 class="text-xl font-bold">
+                Go Chatty
+            </h1>
+            <small class="text-secondary-500">
+                A simple Golang websocket chat
+            </small>
         </header>
         <main class="mx-auto flex w-full p-6 max-w-4xl flex-1 flex-col rounded-xl border border-secondary-800 overflow-y-auto overflow-x-hidden relative" id="app">
             <div class="h-full max-h-96 space-y-1 flex flex-col" id="list"></div>
         </main>
-        <footer class="space-y-2 text-center">
-            <form class="mx-auto w-full max-w-2xl flex gap-x-4" id="form">
+        <footer class="space-y-3 text-center">
+            <form class="mx-auto w-full max-w-2xl flex" id="form">
                 <input class="w-full rounded-lg text-sm placeholder-secondary-600/85 border-secondary-800 bg-secondary-900 shadow-md focus:border-primary-600 focus:outline-none focus:ring-4 focus:ring-primary-500/15" type="text" id="message" placeholder="Type message here... (Press 'Enter' to send a message)" />
             </form>
             <div class="flex items-center gap-x-2 text-xs text-secondary-600 justify-center">
-                Powered by Fiber Framework</a>
+                <span>
+                    Powered by <a class="underline hover:no-underline" href="https://gofiber.io" target="_blank">Fiber</a>
+                </span>
                 <span>&bullet;</span>
                 <a class="underline hover:no-underline" href="https://github.com/iamrafaelmelo/gochatty" target="_blank">Source code</a>
             </div>
