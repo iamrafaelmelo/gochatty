@@ -14,7 +14,6 @@ websocket.onmessage = function (event) {
         case 'setup':
             pid = data.pid
             username = data.username
-            console.log(data)
             break;
         case 'message':
             append(data);
@@ -35,7 +34,7 @@ form.onsubmit = (event) => {
         pid: pid,
         type: 'message',
         username: username,
-        message: message.value,
+        content: message.value,
         datetime: new Date().toLocaleTimeString(),
     });
 
@@ -50,7 +49,7 @@ const append = (data) => {
         <div class="flex gap-y-0.5 flex-col w-full pb-6 ${data.pid === pid ? 'items-end' : 'items-start'}">
             <p class="text-[0.65rem] text-secondary-500">${data.username} &bullet; ${data.datetime}</p>
             <p class="text-sm font-medium ${data.pid === pid ? 'bg-primary-600/35' : 'bg-secondary-600/35'} rounded-md px-3 py-2 gap-y-2 max-w-96">
-                ${data.message}
+                ${data.content}
             </p>
         </div>
     `);
