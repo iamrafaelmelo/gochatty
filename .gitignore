@@ -1,4 +1,5 @@
 /bin/*
 !/bin/.gitkeep
 /node_modules
+/web/public/assets/*.css
 .env
