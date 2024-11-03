@@ -19,11 +19,18 @@ type Client struct {
 	mutex     sync.Mutex
 }
 
-type Message struct {
-	Pid      string
-	Type     string
-	Content  string
-	DateTime string
+type SetupMessage struct {
+	Type     string `json:"type"`
+	Pid      string `json:"pid"`
+	Username string `json:"username"`
+}
+
+type DefaultMessage struct {
+	Type     string `json:"type"`
+	Pid      string `json:"pid"`
+	Username string `json:"username"`
+	Content  string `json:"content"`
+	DateTime string `json:"datetime"`
 }
 
 var clients = make(map[*websocket.Conn]*Client)
@@ -105,11 +112,22 @@ func registerConnection(connection *websocket.Conn) {
 		username: username,
 	}
 
-	payload := fmt.Sprintf("{\"type\":\"setup\",\"pid\":\"%s\",\"username\":\"%s\"}", pid, username)
-	connection.WriteMessage(websocket.TextMessage, []byte(payload))
+	message := &SetupMessage{
+		Type:     "setup",
+		Pid:      pid,
+		Username: username,
+	}
+
+	payload, error := json.Marshal(message)
+
+	if error != nil {
+		log.Println("[error] converting to json error: ", error)
+	}
+
+	connection.WriteMessage(websocket.TextMessage, payload)
 }
 
-func broadcastMessage(message string) {
+func broadcastMessage(content string) {
 	for connection, client := range clients {
 		go func(connection *websocket.Conn, client *Client) {
 			client.mutex.Lock()
@@ -119,17 +137,23 @@ func broadcastMessage(message string) {
 				return
 			}
 
-			MessageStruct := &Message{}
+			message := &DefaultMessage{}
 
-			if error := json.Unmarshal([]byte(message), &MessageStruct); error != nil {
-				log.Println("[error] json error: ", error)
+			if error := json.Unmarshal([]byte(content), message); error != nil {
+				log.Println("[error] converting json to struct error: ", error)
 			}
 
-			if MessageStruct.Pid == client.pid {
+			if message.Pid == client.pid {
 				return
 			}
 
-			if error := connection.WriteMessage(websocket.TextMessage, []byte(message)); error != nil {
+			payload, error := json.Marshal(message)
+
+			if error != nil {
+				log.Println("[error] converting to json error: ", error)
+			}
+
+			if error := connection.WriteMessage(websocket.TextMessage, payload); error != nil {
 				log.Println("[error] write error: ", error)
 
 				client.isClosing = true
