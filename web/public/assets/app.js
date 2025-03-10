@@ -41,7 +41,7 @@ websocket.onclose = function (event) {
 };
 
 // When user is typing a message
-messageInput.onkeyup = (event) => {
+let keypress = () => {
     if (!canSendMessage) {
         setTimeout(function () {
             canSendMessage = true;
@@ -60,6 +60,9 @@ messageInput.onkeyup = (event) => {
 
     websocket.send(data);
 };
+
+messageInput.onkeyup = keypress;
+messageInput.onkeydown = keypress;
 
 // When user send a message to server
 formMessage.onsubmit = (event) => {
