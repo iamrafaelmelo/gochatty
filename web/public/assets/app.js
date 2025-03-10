@@ -41,7 +41,15 @@ websocket.onclose = function (event) {
 };
 
 // When user is typing a message
-let keypress = () => {
+let keypress = (event) => {
+    const keypressed = event.keyCode;
+    let isAlphabetLetterKey = (keypressed >= 65 && keypressed || keypressed >= 97 && keypressed <= 122);
+    let isNumberKey = (keypressed >= 48 && keypressed <= 57);
+
+    if (!isAlphabetLetterKey && !isNumberKey) {
+        return;
+    }
+
     if (!canSendMessage) {
         setTimeout(function () {
             canSendMessage = true;
@@ -67,6 +75,11 @@ messageInput.onkeydown = keypress;
 // When user send a message to server
 formMessage.onsubmit = (event) => {
     event.preventDefault();
+
+    if (messageInput.value === '') {
+        return;
+    }
+
     const data = JSON.stringify({
         pid: pid,
         type: 'message',
