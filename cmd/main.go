@@ -35,7 +35,7 @@ type DefaultMessage struct {
 
 var clients = make(map[*websocket.Conn]*Client)
 var register = make(chan *websocket.Conn)
-var broadcast = make(chan string)
+var broadcast = make(chan *DefaultMessage)
 var unregister = make(chan *websocket.Conn)
 
 func main() {
@@ -77,7 +77,13 @@ func main() {
 				return
 			}
 
-			broadcast <- string(message)
+			defaultMessage := &DefaultMessage{}
+
+			if error := json.Unmarshal([]byte(message), defaultMessage); error != nil {
+				log.Println("[error] converting json to struct error: ", error)
+			}
+
+			broadcast <- defaultMessage
 		}
 	}))
 
@@ -126,7 +132,7 @@ func registerConnection(connection *websocket.Conn) {
 	connection.WriteMessage(websocket.TextMessage, payload)
 }
 
-func broadcastMessage(content string) {
+func broadcastMessage(message *DefaultMessage) {
 	for connection, client := range clients {
 		go func(connection *websocket.Conn, client *Client) {
 			client.mutex.Lock()
@@ -134,12 +140,6 @@ func broadcastMessage(content string) {
 
 			if client.isClosing {
 				return
-			}
-
-			message := &DefaultMessage{}
-
-			if error := json.Unmarshal([]byte(content), message); error != nil {
-				log.Println("[error] converting json to struct error: ", error)
 			}
 
 			if message.Pid == client.pid {
