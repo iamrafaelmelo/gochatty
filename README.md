@@ -1,6 +1,6 @@
 # Go Chatty
 
-![Preview](./screenshots/chat.png)
+![Preview](https://raw.githubusercontent.com/iamrafaelmelo/gochatty/refs/heads/master/screenshots/chat.png)
 
 ## Requirements
 
