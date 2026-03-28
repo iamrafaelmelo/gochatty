@@ -1,9 +1,12 @@
 package config
 
 import (
+	"log"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/joho/godotenv"
 )
 
 const (
@@ -22,6 +25,10 @@ type Config struct {
 }
 
 func Load() Config {
+	if err := godotenv.Load(); err != nil && !os.IsNotExist(err) {
+		log.Printf("[warn] unable to load .env: %v", err)
+	}
+
 	return Config{
 		Port:               stringFromEnv("APP_PORT", DefaultPort),
 		AllowedOrigins:     ParseAllowedOrigins(os.Getenv("APP_ALLOWED_ORIGINS")),
