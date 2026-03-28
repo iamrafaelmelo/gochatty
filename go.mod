@@ -1,8 +1,8 @@
 module github.com/iamrafaelmelo/simple-golang-chat
 
-go 1.24.0
+go 1.25.0
 
-toolchain go1.24.1
+toolchain go1.25.8
 
 require (
 	github.com/fasthttp/websocket v1.5.8
