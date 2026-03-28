@@ -81,6 +81,9 @@ func (server *Server) registerRoutes() {
 	})
 	server.app.Use("/ws", func(context *fiber.Ctx) error {
 		if websocket.IsWebSocketUpgrade(context) {
+			if !server.isAllowedOrigin(context.Get("Origin")) {
+				return context.SendStatus(fiber.StatusForbidden)
+			}
 			return context.Next()
 		}
 
@@ -89,6 +92,20 @@ func (server *Server) registerRoutes() {
 	server.app.Get("/ws", websocket.New(server.handleSocket, websocket.Config{
 		Origins: server.config.AllowedOrigins,
 	}))
+}
+
+func (server *Server) isAllowedOrigin(origin string) bool {
+	if len(server.config.AllowedOrigins) == 0 {
+		return false
+	}
+
+	for _, allowedOrigin := range server.config.AllowedOrigins {
+		if allowedOrigin == origin {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (server *Server) handleSocket(connection *websocket.Conn) {

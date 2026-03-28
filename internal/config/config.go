@@ -8,7 +8,6 @@ import (
 
 const (
 	DefaultPort               = "8080"
-	DefaultAllowedOrigins     = "http://localhost:8080,http://127.0.0.1:8080"
 	DefaultMaxMessageSize     = 1024
 	DefaultTypingMinInterval  = 200 * time.Millisecond
 	DefaultMessageMinInterval = 100 * time.Millisecond
@@ -33,10 +32,6 @@ func Load() Config {
 }
 
 func ParseAllowedOrigins(raw string) []string {
-	if strings.TrimSpace(raw) == "" {
-		raw = DefaultAllowedOrigins
-	}
-
 	parts := strings.Split(raw, ",")
 	origins := make([]string, 0, len(parts))
 
@@ -47,10 +42,6 @@ func ParseAllowedOrigins(raw string) []string {
 		}
 
 		origins = append(origins, origin)
-	}
-
-	if len(origins) == 0 {
-		return strings.Split(DefaultAllowedOrigins, ",")
 	}
 
 	return origins

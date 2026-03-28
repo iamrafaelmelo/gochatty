@@ -151,8 +151,24 @@ func TestDisallowedOriginRejected(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected bad handshake for disallowed origin")
 	}
-	if response == nil || response.StatusCode != http.StatusUpgradeRequired {
-		t.Fatalf("expected upgrade required, got %#v", response)
+	if response == nil || response.StatusCode != http.StatusForbidden {
+		t.Fatalf("expected forbidden, got %#v", response)
+	}
+}
+
+func TestMissingAllowedOriginsRejectsUpgrade(t *testing.T) {
+	url := startTestServer(t, config.Config{}, withoutDefaultAllowedOrigins())
+
+	headers := http.Header{"Origin": []string{"http://localhost:8080"}}
+	connection, response, err := clientwebsocket.DefaultDialer.Dial(url, headers)
+	if connection != nil {
+		_ = connection.Close()
+	}
+	if err == nil {
+		t.Fatal("expected bad handshake when allowed origins are unset")
+	}
+	if response == nil || response.StatusCode != http.StatusForbidden {
+		t.Fatalf("expected forbidden, got %#v", response)
 	}
 }
 
@@ -174,7 +190,9 @@ func TestOversizedMessageIsRejected(t *testing.T) {
 	}
 }
 
-func startTestServer(t *testing.T, cfg config.Config) string {
+type testServerOption func(*config.Config, net.Listener)
+
+func startTestServer(t *testing.T, cfg config.Config, options ...testServerOption) string {
 	t.Helper()
 
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
@@ -182,7 +200,15 @@ func startTestServer(t *testing.T, cfg config.Config) string {
 		t.Fatalf("listen: %v", err)
 	}
 
-	if len(cfg.AllowedOrigins) == 0 {
+	applyDefaultAllowedOrigins := true
+	for _, option := range options {
+		option(&cfg, listener)
+		if len(cfg.AllowedOrigins) == 0 {
+			applyDefaultAllowedOrigins = false
+		}
+	}
+
+	if applyDefaultAllowedOrigins && len(cfg.AllowedOrigins) == 0 {
 		cfg.AllowedOrigins = []string{"http://" + listener.Addr().String()}
 	}
 	if cfg.Port == "" {
@@ -209,6 +235,12 @@ func startTestServer(t *testing.T, cfg config.Config) string {
 	})
 
 	return "ws://" + listener.Addr().String() + "/ws"
+}
+
+func withoutDefaultAllowedOrigins() testServerOption {
+	return func(cfg *config.Config, _ net.Listener) {
+		cfg.AllowedOrigins = []string{}
+	}
 }
 
 func dialWebsocket(t *testing.T, url string, origin string) *clientwebsocket.Conn {

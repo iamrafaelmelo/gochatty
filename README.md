@@ -35,5 +35,5 @@ Copy `.env.example` and configure:
 - `APP_NAME`
 - `APP_PORT`
 - `APP_URL`
-- `APP_ALLOWED_ORIGINS`
+- `APP_ALLOWED_ORIGINS` required, comma-separated origins allowed to open websocket connections
 - `APP_ENV`
