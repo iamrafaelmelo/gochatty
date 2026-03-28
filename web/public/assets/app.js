@@ -3,13 +3,14 @@ const messageInput = document.getElementById('message-input');
 const messagesList = document.getElementById('messages-list');
 const app = document.getElementById('app');
 const typingMessage = document.getElementById('typing');
-const websocket = new WebSocket(`ws://${document.location.host}/ws`);
+const websocketProtocol = document.location.protocol === 'https:' ? 'wss' : 'ws';
+const websocket = new WebSocket(`${websocketProtocol}://${document.location.host}/ws`);
 
 // Controls user typing intervals
 const throttleIntervalTime = 200;
 const clearIntervalTime = 900;
-var canSendMessage = false;
 var clearTimerId = null;
+var lastTypingSentAt = 0;
 
 // User base informations
 var pid = null;
@@ -41,36 +42,23 @@ websocket.onclose = function (event) {
 };
 
 // When user is typing a message
-let keypress = (event) => {
-    const keypressed = event.keyCode;
-    let isAlphabetLetterKey = (keypressed >= 65 && keypressed || keypressed >= 97 && keypressed <= 122);
-    let isNumberKey = (keypressed >= 48 && keypressed <= 57);
-
-    if (!isAlphabetLetterKey && !isNumberKey) {
+let sendTypingEvent = () => {
+    const now = Date.now();
+    if (now - lastTypingSentAt < throttleIntervalTime) {
         return;
     }
 
-    if (!canSendMessage) {
-        setTimeout(function () {
-            canSendMessage = true;
-        }, throttleIntervalTime);
-
-        return;
-    }
+    lastTypingSentAt = now;
 
     const data = JSON.stringify({
-        pid: pid,
         type: 'typing',
-        username: username,
         content: messageInput.value ?? '',
-        datetime: new Date().toLocaleTimeString()
     });
 
     websocket.send(data);
 };
 
-messageInput.onkeyup = keypress;
-messageInput.onkeydown = keypress;
+messageInput.addEventListener('input', sendTypingEvent);
 
 // When user send a message to server
 formMessage.onsubmit = (event) => {
@@ -81,27 +69,35 @@ formMessage.onsubmit = (event) => {
     }
 
     const data = JSON.stringify({
-        pid: pid,
         type: 'message',
+        content: messageInput.value,
+    });
+
+    websocket.send(data);
+    appendMessage({
+        type: 'message',
+        pid: pid,
         username: username,
         content: messageInput.value,
         datetime: new Date().toLocaleTimeString(),
     });
-
-    websocket.send(data);
-    appendMessage(JSON.parse(data));
     messageInput.value = '';
 };
 
 const appendMessage = (data) => {
-    messagesList.insertAdjacentHTML('beforeend', `
-        <div class="flex gap-y-0.5 flex-col w-full pb-6 ${data.pid === pid ? 'items-end' : 'items-start'}">
-            <p class="text-[0.65rem] text-secondary-500">${data.username} &bullet; ${data.datetime}</p>
-            <p class="text-sm font-medium ${data.pid === pid ? 'bg-primary-600/35' : 'bg-secondary-600/35'} rounded-md px-3 py-2 gap-y-2 max-w-96">
-                ${data.content}
-            </p>
-        </div>
-    `);
+    const wrapper = document.createElement('div');
+    wrapper.className = `flex gap-y-0.5 flex-col w-full pb-6 ${data.pid === pid ? 'items-end' : 'items-start'}`;
+
+    const metadata = document.createElement('p');
+    metadata.className = 'text-[0.65rem] text-secondary-500';
+    metadata.textContent = `${data.username} • ${data.datetime}`;
+
+    const bubble = document.createElement('p');
+    bubble.className = `text-sm font-medium rounded-md px-3 py-2 gap-y-2 max-w-96 ${data.pid === pid ? 'bg-primary-600/35' : 'bg-secondary-600/35'}`;
+    bubble.textContent = data.content;
+
+    wrapper.append(metadata, bubble);
+    messagesList.append(wrapper);
 
     app.scrollTo(0, messagesList.scrollHeight);
 };
