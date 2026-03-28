@@ -27,3 +27,13 @@ make run
 ```
 
 And access `http://127.0.0.1:8080` on your browser.
+
+## Environment
+
+Copy `.env.example` and configure:
+
+- `APP_NAME`
+- `APP_PORT`
+- `APP_URL`
+- `APP_ALLOWED_ORIGINS`
+- `APP_ENV`
