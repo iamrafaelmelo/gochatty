@@ -3,4 +3,3 @@
 /node_modules
 .env
 /web/public/*
-!/web/public/.gitkeep

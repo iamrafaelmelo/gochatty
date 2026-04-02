@@ -3,7 +3,7 @@ FROM node:22-alpine AS assets
 WORKDIR /src
 
 COPY package.json package-lock.json ./
-COPY vite.config.js ./
+COPY vite.config.mjs ./
 COPY tailwind.config.js postcss.config.js ./
 COPY web ./web
 
