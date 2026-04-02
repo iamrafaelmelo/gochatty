@@ -2,5 +2,5 @@
 !/bin/.gitkeep
 /node_modules
 .env
-/web/public/assets/
-!/web/public/assets/.gitkeep
+/web/public/*
+!/web/public/.gitkeep
