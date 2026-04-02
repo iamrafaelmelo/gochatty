@@ -17,20 +17,18 @@
 Install dependencies:
 
 ```sh
-npm install          # install dependencies
-npm run build        # build the CSS once
-npm run watch        # run the Tailwind watcher
-go run ./cmd/main.go # run the Go server
+npm install          # install frontend dependencies
+npm run build        # build React + Tailwind static assets once
+npm run dev          # run Vite dev server (optional)
+go run ./cmd/main.go # run the Go server against built static files
 
-# Or just run all in background
-npm run watch & go run ./cmd/main.go
-# Or use the existing Make target
+# Or use the existing Make target for the Go app
 make run
 ```
 
 ## Setup for Production environment
 
-The production image builds Tailwind CSS during the image build, compiles the Go binary in a separate stage, and ships only the binary plus static assets in a minimal `scratch` runtime image.
+The production image builds frontend assets, compiles the Go binary in a separate stage, and ships only the binary plus static assets in a minimal `scratch` runtime image.
 
 Build the image:
 
@@ -54,4 +52,5 @@ Then access `http://0.0.0.0:8080`.
 
 - The production image runs as a non-root user.
 - `APP_ALLOWED_ORIGINS` must include the browser origin that will open the websocket connection.
+- Optional frontend override: set `APP_WEBSOCKET_URL` at build time (for example `wss://chat.example.com/ws`) to control websocket endpoint resolution.
 - The current root `Dockerfile` is intended for production-style builds and deployment.

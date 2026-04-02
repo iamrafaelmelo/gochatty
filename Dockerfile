@@ -3,9 +3,9 @@ FROM node:22-alpine AS assets
 WORKDIR /src
 
 COPY package.json package-lock.json ./
+COPY vite.config.js ./
 COPY tailwind.config.js postcss.config.js ./
-COPY web/build ./web/build
-COPY web/public ./web/public
+COPY web ./web
 
 RUN npm ci && npm run build
 
