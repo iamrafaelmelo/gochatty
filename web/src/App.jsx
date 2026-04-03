@@ -6,7 +6,7 @@ import { useTypingThrottle } from './hooks/useTypingThrottle';
 
 export default function App() {
   const appRef = useRef(null);
-  const { currentUser, messages, sendMessage, sendTyping, typingText } = useChatWebSocket();
+  const { currentUser, messages, onlineUsers, sendMessage, sendTyping, typingText } = useChatWebSocket();
   const { sendThrottledTyping } = useTypingThrottle(sendTyping);
 
   useEffect(() => {
@@ -22,6 +22,7 @@ export default function App() {
       appRef={appRef}
       currentPid={currentUser.pid}
       messages={messages}
+      onlineUsers={onlineUsers}
       onSendMessage={sendMessage}
       onTyping={sendThrottledTyping}
       typingText={typingText}

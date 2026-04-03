@@ -2,6 +2,7 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite",
+    "test": "node --test web/src/lib/*.test.mjs",
     "watch": "vite build --watch"
   },
   "dependencies": {

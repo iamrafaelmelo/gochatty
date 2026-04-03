@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import {
   MESSAGE_TYPE_MESSAGE,
+  MESSAGE_TYPE_PRESENCE,
   MESSAGE_TYPE_SETUP,
   MESSAGE_TYPE_TYPING,
   TYPING_CLEAR_TIMEOUT_MS,
@@ -33,6 +34,7 @@ export function useChatWebSocket() {
   const typingClearTimeoutRef = useRef(null);
 
   const [messages, setMessages] = useState([]);
+  const [onlineUsers, setOnlineUsers] = useState([]);
   const [typingText, setTypingText] = useState('');
   const [currentUser, setCurrentUser] = useState({ pid: null, username: null });
 
@@ -46,6 +48,9 @@ export function useChatWebSocket() {
       switch (data.type) {
         case MESSAGE_TYPE_SETUP:
           setCurrentUser({ pid: data.pid, username: data.username });
+          break;
+        case MESSAGE_TYPE_PRESENCE:
+          setOnlineUsers(Array.isArray(data.users) ? data.users : []);
           break;
         case MESSAGE_TYPE_MESSAGE:
           setMessages((previousMessages) => [...previousMessages, data]);
@@ -108,6 +113,7 @@ export function useChatWebSocket() {
   return {
     currentUser,
     messages,
+    onlineUsers,
     sendMessage,
     sendTyping,
     typingText,
