@@ -8,13 +8,24 @@ import {
 } from '../types/chat';
 
 function resolveWebSocketUrl() {
-  const configuredUrl = import.meta.env.APP_WEBSOCKET_URL;
-  if (configuredUrl) {
-    return configuredUrl;
+  const configuredUrl = import.meta.env.APP_WEBSOCKET_URL?.trim();
+
+  if (!configuredUrl) {
+    throw new Error('APP_WEBSOCKET_URL is required and must include the ws:// or wss:// protocol and host.');
   }
 
-  const websocketProtocol = document.location.protocol === 'https:' ? 'wss' : 'ws';
-  return `${websocketProtocol}://${document.location.host}/ws`;
+  let parsedUrl;
+  try {
+    parsedUrl = new URL(configuredUrl);
+  } catch {
+    throw new Error('APP_WEBSOCKET_URL must be a valid absolute websocket URL including protocol and host.');
+  }
+
+  if ((parsedUrl.protocol !== 'ws:' && parsedUrl.protocol !== 'wss:') || parsedUrl.host === '') {
+    throw new Error('APP_WEBSOCKET_URL must use ws:// or wss:// and include a host.');
+  }
+
+  return parsedUrl.toString();
 }
 
 export function useChatWebSocket() {
