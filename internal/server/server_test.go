@@ -20,6 +20,7 @@ func TestSetupAssignsAnonymousIdentity(t *testing.T) {
 
 	connection := dialWebsocket(t, url, testOrigin(url))
 	setup := readSetupMessage(t, connection)
+	presence := readPresenceMessage(t, connection)
 
 	if setup.Type != "setup" {
 		t.Fatalf("expected setup type, got %q", setup.Type)
@@ -30,6 +31,53 @@ func TestSetupAssignsAnonymousIdentity(t *testing.T) {
 	if !strings.HasPrefix(setup.Username, "Anonymous") {
 		t.Fatalf("expected anonymous username, got %q", setup.Username)
 	}
+	if len(presence.Users) != 1 || presence.Users[0].Pid != setup.Pid {
+		t.Fatalf("expected presence to include only the connected user, got %#v", presence.Users)
+	}
+}
+
+func TestPresenceBroadcastIncludesConnectedUsers(t *testing.T) {
+	url := startTestServer(t, config.Config{})
+
+	firstConnection := dialWebsocket(t, url, testOrigin(url))
+	secondConnection := dialWebsocket(t, url, testOrigin(url))
+
+	firstSetup := readSetupMessage(t, firstConnection)
+	_ = readPresenceMessage(t, firstConnection)
+
+	secondSetup := readSetupMessage(t, secondConnection)
+	secondPresence := readPresenceMessage(t, secondConnection)
+	firstUpdatedPresence := readPresenceMessage(t, firstConnection)
+
+	assertPresenceMembers(t, secondPresence.Users, firstSetup.Pid, secondSetup.Pid)
+	assertPresenceMembers(t, firstUpdatedPresence.Users, firstSetup.Pid, secondSetup.Pid)
+}
+
+func TestPresenceBroadcastRemovesDisconnectedUsers(t *testing.T) {
+	url := startTestServer(t, config.Config{})
+
+	remainingConnection := dialWebsocket(t, url, testOrigin(url))
+	departingConnection := dialWebsocket(t, url, testOrigin(url))
+
+	remainingSetup := readSetupMessage(t, remainingConnection)
+	_ = readPresenceMessage(t, remainingConnection)
+
+	departingSetup := readSetupMessage(t, departingConnection)
+	_ = readPresenceMessage(t, departingConnection)
+	_ = readPresenceMessage(t, remainingConnection)
+
+	if err := departingConnection.Close(); err != nil {
+		t.Fatalf("close departing connection: %v", err)
+	}
+
+	updatedPresence := readPresenceMessage(t, remainingConnection)
+	assertPresenceMembers(t, updatedPresence.Users, remainingSetup.Pid)
+
+	for _, user := range updatedPresence.Users {
+		if user.Pid == departingSetup.Pid {
+			t.Fatalf("did not expect disconnected user %q to remain in presence list", departingSetup.Pid)
+		}
+	}
 }
 
 func TestMessageBroadcastUsesServerIdentity(t *testing.T) {
@@ -38,7 +86,10 @@ func TestMessageBroadcastUsesServerIdentity(t *testing.T) {
 	recipient := dialWebsocket(t, url, testOrigin(url))
 
 	senderSetup := readSetupMessage(t, sender)
+	_ = readPresenceMessage(t, sender)
 	recipientSetup := readSetupMessage(t, recipient)
+	_ = readPresenceMessage(t, recipient)
+	_ = readPresenceMessage(t, sender)
 
 	sendJSONMessage(t, sender, map[string]string{
 		"type":     "message",
@@ -68,7 +119,10 @@ func TestInvalidJSONDoesNotBroadcast(t *testing.T) {
 	recipient := dialWebsocket(t, url, testOrigin(url))
 
 	_ = readSetupMessage(t, sender)
+	_ = readPresenceMessage(t, sender)
 	_ = readSetupMessage(t, recipient)
+	_ = readPresenceMessage(t, recipient)
+	_ = readPresenceMessage(t, sender)
 
 	if err := sender.WriteMessage(clientwebsocket.TextMessage, []byte("{invalid")); err != nil {
 		t.Fatalf("write invalid payload: %v", err)
@@ -85,7 +139,10 @@ func TestTypingBroadcastUsesServerIdentity(t *testing.T) {
 	recipient := dialWebsocket(t, url, testOrigin(url))
 
 	senderSetup := readSetupMessage(t, sender)
+	_ = readPresenceMessage(t, sender)
 	recipientSetup := readSetupMessage(t, recipient)
+	_ = readPresenceMessage(t, recipient)
+	_ = readPresenceMessage(t, sender)
 
 	sendJSONMessage(t, sender, map[string]string{
 		"type":     "typing",
@@ -113,7 +170,10 @@ func TestTypingEventsAreRateLimited(t *testing.T) {
 	recipient := dialWebsocket(t, url, testOrigin(url))
 
 	_ = readSetupMessage(t, sender)
+	_ = readPresenceMessage(t, sender)
 	_ = readSetupMessage(t, recipient)
+	_ = readPresenceMessage(t, recipient)
+	_ = readPresenceMessage(t, sender)
 
 	sendJSONMessage(t, sender, map[string]string{"type": "typing", "content": "h"})
 	sendJSONMessage(t, sender, map[string]string{"type": "typing", "content": "he"})
@@ -130,7 +190,10 @@ func TestTypingIgnoresEmptyContent(t *testing.T) {
 	recipient := dialWebsocket(t, url, testOrigin(url))
 
 	_ = readSetupMessage(t, sender)
+	_ = readPresenceMessage(t, sender)
 	_ = readSetupMessage(t, recipient)
+	_ = readPresenceMessage(t, recipient)
+	_ = readPresenceMessage(t, sender)
 
 	sendJSONMessage(t, sender, map[string]string{"type": "typing", "content": "   "})
 	if err := expectNoClientMessage(recipient, 250*time.Millisecond); err != nil {
@@ -177,16 +240,24 @@ func TestOversizedMessageIsRejected(t *testing.T) {
 	sender := dialWebsocket(t, url, testOrigin(url))
 	recipient := dialWebsocket(t, url, testOrigin(url))
 
-	_ = readSetupMessage(t, sender)
-	_ = readSetupMessage(t, recipient)
+	senderSetup := readSetupMessage(t, sender)
+	_ = readPresenceMessage(t, sender)
+	recipientSetup := readSetupMessage(t, recipient)
+	_ = readPresenceMessage(t, recipient)
+	_ = readPresenceMessage(t, sender)
 
 	sendJSONMessage(t, sender, map[string]string{
 		"type":    "message",
 		"content": strings.Repeat("x", 256),
 	})
 
-	if err := expectNoClientMessage(recipient, 300*time.Millisecond); err != nil {
-		t.Fatal(err)
+	nextMessage := readPresenceMessage(t, recipient)
+	assertPresenceMembers(t, nextMessage.Users, recipientSetup.Pid)
+
+	for _, user := range nextMessage.Users {
+		if user.Pid == senderSetup.Pid {
+			t.Fatalf("did not expect oversized message sender %q to remain connected", senderSetup.Pid)
+		}
 	}
 }
 
@@ -278,6 +349,22 @@ func readSetupMessage(t *testing.T, connection *clientwebsocket.Conn) message.Se
 	return setup
 }
 
+func readPresenceMessage(t *testing.T, connection *clientwebsocket.Conn) message.Presence {
+	t.Helper()
+
+	_, payload, err := connection.ReadMessage()
+	if err != nil {
+		t.Fatalf("read presence message: %v", err)
+	}
+
+	presence := message.Presence{}
+	if err := json.Unmarshal(payload, &presence); err != nil {
+		t.Fatalf("unmarshal presence message: %v", err)
+	}
+
+	return presence
+}
+
 func readOutboundMessage(t *testing.T, connection *clientwebsocket.Conn) message.Outbound {
 	t.Helper()
 
@@ -334,4 +421,23 @@ func expectNoClientMessage(connection *clientwebsocket.Conn, timeout time.Durati
 	}
 
 	return nil
+}
+
+func assertPresenceMembers(t *testing.T, users []message.PresenceUser, expectedPIDs ...string) {
+	t.Helper()
+
+	if len(users) != len(expectedPIDs) {
+		t.Fatalf("expected %d presence users, got %d", len(expectedPIDs), len(users))
+	}
+
+	seen := make(map[string]bool, len(users))
+	for _, user := range users {
+		seen[user.Pid] = true
+	}
+
+	for _, expectedPID := range expectedPIDs {
+		if !seen[expectedPID] {
+			t.Fatalf("expected pid %q in presence users %#v", expectedPID, users)
+		}
+	}
 }

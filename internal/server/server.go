@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -224,10 +225,12 @@ func (server *Server) handleMessages() {
 		case registration := <-server.register:
 			server.clients[registration.connection] = registration.client
 			log.Println("[info] connection registered")
+			server.broadcastPresenceSnapshot()
 		case event := <-server.broadcast:
 			server.broadcastMessage(event)
 		case connection := <-server.unregister:
 			server.removeConnection(connection)
+			server.broadcastPresenceSnapshot()
 		case <-server.done:
 			return
 		}
@@ -246,6 +249,32 @@ func (server *Server) broadcastMessage(event broadcastEnvelope) {
 		}
 
 		go server.writeMessage(connection, connectedClient, payload)
+	}
+}
+
+func (server *Server) broadcastPresenceSnapshot() {
+	users := make([]message.PresenceUser, 0, len(server.clients))
+	for _, connectedClient := range server.clients {
+		users = append(users, message.PresenceUser{
+			Pid:      connectedClient.PID(),
+			Username: connectedClient.Username(),
+		})
+	}
+
+	sort.Slice(users, func(left int, right int) bool {
+		if users[left].Username == users[right].Username {
+			return users[left].Pid < users[right].Pid
+		}
+		return users[left].Username < users[right].Username
+	})
+
+	payload := message.Presence{
+		Type:  "presence",
+		Users: users,
+	}
+
+	for _, entry := range mapsKeys(server.clients) {
+		go server.writePresence(entry.connection, entry.client, payload)
 	}
 }
 
@@ -273,6 +302,30 @@ func (server *Server) writeMessage(connection *websocket.Conn, currentClient *cl
 	}
 }
 
+func (server *Server) writePresence(connection *websocket.Conn, currentClient *client.Client, outbound message.Presence) {
+	payload, err := json.Marshal(outbound)
+	if err != nil {
+		log.Println("[error] converting presence to json error:", err)
+		return
+	}
+
+	var writeErr error
+	currentClient.WithLock(func(isClosing bool) {
+		if isClosing {
+			return
+		}
+		writeErr = connection.WriteMessage(websocket.TextMessage, payload)
+	})
+
+	if writeErr != nil {
+		log.Println("[error] presence write error:", writeErr)
+		currentClient.MarkClosing()
+		_ = connection.WriteMessage(websocket.CloseMessage, []byte{})
+		_ = connection.Close()
+		server.unregister <- connection
+	}
+}
+
 func (server *Server) removeConnection(connection *websocket.Conn) {
 	if _, ok := server.clients[connection]; !ok {
 		return
@@ -280,4 +333,26 @@ func (server *Server) removeConnection(connection *websocket.Conn) {
 
 	delete(server.clients, connection)
 	log.Println("[info] connection unregistered")
+}
+
+func mapsKeys(clients map[*websocket.Conn]*client.Client) []struct {
+	connection *websocket.Conn
+	client     *client.Client
+} {
+	keys := make([]struct {
+		connection *websocket.Conn
+		client     *client.Client
+	}, 0, len(clients))
+
+	for connection, currentClient := range clients {
+		keys = append(keys, struct {
+			connection *websocket.Conn
+			client     *client.Client
+		}{
+			connection: connection,
+			client:     currentClient,
+		})
+	}
+
+	return keys
 }

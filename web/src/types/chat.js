@@ -1,4 +1,5 @@
 export const MESSAGE_TYPE_SETUP = 'setup';
+export const MESSAGE_TYPE_PRESENCE = 'presence';
 export const MESSAGE_TYPE_MESSAGE = 'message';
 export const MESSAGE_TYPE_TYPING = 'typing';
 
