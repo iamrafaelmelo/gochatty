@@ -7,7 +7,7 @@ toolchain go1.25.8
 require (
 	github.com/fasthttp/websocket v1.5.8
 	github.com/gofiber/contrib/websocket v1.3.2
-	github.com/gofiber/fiber/v2 v2.52.12
+	github.com/gofiber/fiber/v2 v2.52.13
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
 )
